@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Garmin Renamer</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚲</text></svg>">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <div class="brand">🚲 Garmin Renamer</div>
+  <nav id="tabs">
+    <button data-tab="overview" class="active">Übersicht</button>
+    <button data-tab="zones">Zonen</button>
+    <button data-tab="rules">Regeln</button>
+    <button data-tab="counters">Zähler</button>
+    <button data-tab="settings">Einstellungen</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ======================= Übersicht ======================= -->
+  <section id="tab-overview" class="tab active">
+    <div id="dry-banner" class="banner warn hidden">
+      <span><b>Probemodus aktiv:</b> Es wird nur angezeigt, wie umbenannt würde. Bei Garmin ändert sich nichts.</span>
+      <button id="btn-arm" class="primary">Scharf schalten</button>
+    </div>
+
+    <div class="grid2">
+      <div class="card" id="garmin-card">
+        <h2>Garmin Connect</h2>
+        <div id="garmin-body"></div>
+      </div>
+      <div class="card">
+        <h2>Automatik</h2>
+        <dl class="kv">
+          <dt>Letzter Lauf</dt><dd id="st-last">–</dd>
+          <dt>Nächster Lauf</dt><dd id="st-next">–</dd>
+          <dt>Ergebnis</dt><dd id="st-result">–</dd>
+        </dl>
+        <div class="row">
+          <button id="btn-run" class="primary">Jetzt ausführen</button>
+          <button id="btn-preview">Vorschau laden</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Vorschau <small>So würden die letzten Aktivitäten heißen</small></h2>
+      <div id="preview" class="table-wrap"><p class="muted">Noch nicht geladen.</p></div>
+    </div>
+
+    <div class="card">
+      <h2>Verlauf</h2>
+      <div id="history" class="table-wrap"></div>
+    </div>
+  </section>
+
+  <!-- ======================= Zonen ======================= -->
+  <section id="tab-zones" class="tab">
+    <div class="zones-layout">
+      <div class="card zone-side">
+        <h2>Zonen</h2>
+        <p class="muted small">In die Karte klicken, um eine Zone anzulegen. Grüne Punkte = Starts, rote = Ziele deiner letzten Aktivitäten.</p>
+        <form id="zone-form" class="hidden">
+          <input type="hidden" name="id">
+          <label>Name <input name="name" required placeholder="z. B. Zuhause"></label>
+          <label>Radius: <b id="radius-label">200</b> m
+            <input type="range" name="radius_m" min="50" max="2000" step="25" value="200">
+          </label>
+          <label>Farbe <input type="color" name="color" value="#2563eb"></label>
+          <div class="small muted" id="zone-coords"></div>
+          <div class="row">
+            <button class="primary" type="submit">Speichern</button>
+            <button type="button" id="zone-cancel">Abbrechen</button>
+            <button type="button" id="zone-delete" class="danger hidden">Löschen</button>
+          </div>
+        </form>
+        <ul id="zone-list" class="list"></ul>
+        <div class="row"><input id="map-search" placeholder="Ort suchen …"><button id="map-search-btn">Suchen</button></div>
+      </div>
+      <div id="map"></div>
+    </div>
+  </section>
+
+  <!-- ======================= Regeln ======================= -->
+  <section id="tab-rules" class="tab">
+    <div class="card">
+      <div class="row between">
+        <h2>Regeln <small>Die erste passende Regel gewinnt</small></h2>
+        <button id="btn-new-rule" class="primary">+ Neue Regel</button>
+      </div>
+      <ul id="rule-list" class="list rules"></ul>
+    </div>
+  </section>
+
+  <!-- ======================= Zähler ======================= -->
+  <section id="tab-counters" class="tab">
+    <div class="card">
+      <h2>Zähler</h2>
+      <p class="muted small">Ein Zähler steigt jedes Mal um 1, wenn eine Regel greift, die ihn verwendet. In der Vorlage mit <code>{counter}</code> einsetzen.<br>
+        <b>Stand aus Namen lesen:</b> Mit einem Muster wie <code>Arbeit #{n}</code> sucht das Tool in den letzten Aktivitäten die höchste Nummer (z. B. 79 aus „Arbeit #79 M9“) und macht dort weiter. Es zählt der höhere Wert von gespeichertem Stand und gefundener Nummer.</p>
+      <div id="counter-table" class="table-wrap"></div>
+      <form id="counter-form" class="row">
+        <input name="name" placeholder="Neuer Zähler, z. B. arbeit" required style="max-width:220px">
+        <input name="pattern" placeholder="Stand aus Namen lesen, z. B. Arbeit #{n}" style="max-width:300px">
+        <select name="reset">
+          <option value="never">nie zurücksetzen</option>
+          <option value="yearly">jährlich</option>
+          <option value="monthly">monatlich</option>
+          <option value="weekly">wöchentlich</option>
+        </select>
+        <button class="primary">Anlegen</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ======================= Einstellungen ======================= -->
+  <section id="tab-settings" class="tab">
+    <div class="card narrow">
+      <h2>Einstellungen</h2>
+      <form id="settings-form">
+        <label class="check"><input type="checkbox" name="dry_run"> Probemodus (nichts wirklich umbenennen)</label>
+        <label>Abfrage-Intervall (Minuten) <input type="number" name="poll_minutes" min="1" max="1440"></label>
+        <label>Wie viele der neuesten Aktivitäten mit den Regeln prüfen <input type="number" name="lookback" min="1" max="200">
+          <span class="small muted">Die älteste davon wird zuerst geprüft, die neueste zuletzt.</span></label>
+        <label>Wie viele Aktivitäten insgesamt einlesen <input type="number" name="history_count" min="1" max="1000">
+          <span class="small muted">Nur zum Lesen, z. B. um den letzten Zählerstand aus Namen wie „Arbeit #79“ zu finden. Wird nichts davon geändert. Mindestens so viele wie oben.</span></label>
+        <label>Nur Aktivitäten ab Datum <input type="date" name="start_date">
+          <span class="small muted">Ältere Aktivitäten werden nie angefasst. Wird beim ersten Lauf automatisch auf heute gesetzt.</span>
+        </label>
+        <label class="check"><input type="checkbox" name="skip_custom_names"> Aktivitäten überspringen, die schon einen eigenen Namen haben</label>
+        <button class="primary">Speichern</button>
+      </form>
+    </div>
+  </section>
+</main>
+
+<!-- ======================= Regel-Editor ======================= -->
+<dialog id="rule-dialog">
+  <form id="rule-form" method="dialog">
+    <h2 id="rule-dialog-title">Regel</h2>
+    <input type="hidden" name="id">
+    <label>Bezeichnung (nur für dich) <input name="label" placeholder="Arbeitsweg hin"></label>
+    <label>Neuer Name <input name="template" placeholder="🚲 Arbeit #{counter} – Hinweg (leer = Namen nicht ändern)"></label>
+    <div class="chips" id="placeholder-chips"></div>
+    <label>Beschreibung (optional) <textarea name="description_template" rows="2" placeholder="z. B. {distance_km} km mit {gear}"></textarea></label>
+    <div class="grid2">
+      <label>Zähler <input name="counter" list="counter-options" placeholder="z. B. arbeit (leer = keiner)"></label>
+      <label>Zähler-Verhalten
+        <select name="counter_mode">
+          <option value="increment">+1 – neue Nummer (z. B. Hinweg)</option>
+          <option value="current">gleiche Nummer wie zuletzt (z. B. Heimweg)</option>
+        </select>
+      </label>
+    </div>
+    <datalist id="counter-options"></datalist>
+    <label>Sportart ändern auf
+      <select name="set_type"><option value="">– nicht ändern –</option></select>
+    </label>
+
+    <fieldset>
+      <legend>Bedingungen <span class="small muted">(leer = egal)</span></legend>
+      <div class="label">Sportart</div>
+      <div class="chips" id="type-chips"></div>
+      <div class="grid2">
+        <label>Start in Zone <select name="start_zone"></select></label>
+        <label>Ziel in Zone <select name="end_zone"></select></label>
+      </div>
+      <label class="check"><input type="checkbox" name="either_direction"> Auch umgekehrt (Start ↔ Ziel)</label>
+      <label>Ausrüstung / Fahrrad <input name="gear" list="gear-options" placeholder="z. B. *M9* oder Canyon">
+        <span class="small muted">* = beliebige Zeichen (z. B. <code>*M9*</code>). Ohne * reicht ein Teil des Namens. Mehrere mit <code>|</code> trennen.</span></label>
+      <datalist id="gear-options"></datalist>
+      <div class="label">Wochentage</div>
+      <div class="chips" id="weekday-chips"></div>
+      <div class="grid2">
+        <label>Start ab Uhrzeit <input type="time" name="time_from"></label>
+        <label>Start bis Uhrzeit <input type="time" name="time_to"></label>
+        <label>Mindestens km <input type="number" step="0.1" name="min_km"></label>
+        <label>Höchstens km <input type="number" step="0.1" name="max_km"></label>
+      </div>
+      <label>Garmin-Name passt auf (Regex) <input name="name_regex" placeholder="z. B. Radfahren$"></label>
+    </fieldset>
+    <label class="check"><input type="checkbox" name="cont"> Danach weitere Regeln prüfen
+      <span class="small muted">(Regeln ohne neuen Namen, die nur die Sportart ändern, gelten sowieso immer.)</span></label>
+    <label class="check"><input type="checkbox" name="enabled" checked> Aktiv</label>
+    <div class="row end">
+      <button type="button" id="rule-cancel">Abbrechen</button>
+      <button class="primary" type="submit">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast hidden"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

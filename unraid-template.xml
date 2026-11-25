@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>garmin-renamer</Name>
+  <Repository>ghcr.io/schwaxi/garmin-renamer:latest</Repository>
+  <Registry>https://github.com/schwaxi/garmin-renamer/pkgs/container/garmin-renamer</Registry>
+  <Project>https://github.com/schwaxi/garmin-renamer</Project>
+  <Support>https://github.com/schwaxi/garmin-renamer/issues</Support>
+  <Network>bridge</Network>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Overview>Benennt Garmin-Connect-Aktivitäten automatisch nach eigenen Regeln um (Zonen auf der Karte, Fahrrad, Sportart, Uhrzeit, Zähler).</Overview>
+  <Category>Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <Icon>https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f6b2.png</Icon>
+  <Config Name="WebUI-Port" Target="8080" Default="8085" Mode="tcp" Description="Port der Weboberfläche" Type="Port" Display="always" Required="true">8085</Config>
+  <Config Name="Config" Target="/config" Default="/mnt/user/appdata/garmin-renamer" Mode="rw" Description="Datenbank und Garmin-Tokens" Type="Path" Display="always" Required="true">/mnt/user/appdata/garmin-renamer</Config>
+  <Config Name="TZ" Target="TZ" Default="Europe/Vienna" Description="Zeitzone" Type="Variable" Display="always" Required="false">Europe/Vienna</Config>
+  <Config Name="UI_PASSWORD" Target="UI_PASSWORD" Default="" Description="Optional: Passwort für die Oberfläche (Benutzer admin)" Type="Variable" Display="always" Required="false" Mask="true"></Config>
+  <Config Name="DEMO" Target="DEMO" Default="" Description="1 = Beispieldaten statt Garmin-Konto" Type="Variable" Display="advanced" Required="false"></Config>
+</Container>

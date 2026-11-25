@@ -1,0 +1,13 @@
+services:
+  garmin-renamer:
+    image: ghcr.io/schwaxi/garmin-renamer:latest
+    container_name: garmin-renamer
+    restart: unless-stopped
+    ports:
+      - "8085:8080"
+    environment:
+      - TZ=Europe/Vienna
+      # - UI_PASSWORD=geheim     # optional: Passwortschutz für die Oberfläche (Benutzer: admin)
+      # - DEMO=1                 # Beispieldaten statt Garmin-Konto
+    volumes:
+      - /mnt/user/appdata/garmin-renamer:/config
